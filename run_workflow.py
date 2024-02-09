@@ -38,25 +38,21 @@ if __name__ == "__main__":
     
     print("Declaring files...")
 
-    run_content = None
-    run_path = "/afs/crc.nd.edu/user/j/jzhou24/ND_BIO60132_Sp24/Analysis/01_Quality_Control/single_read/test.sh"
-    run_path = "./test.sh"
-    with open(run_path, "r") as f:
-        run_content = f.read()
-    run = m.declare_buffer(run_content)
+    software_path = "../../Software/"
+    references_path = "../References/"
+    input_data_path = "../../../Input_data/"
     
-    fastqc = m.declare_file("../../Software/FastQC/")   
-    bbmap = m.declare_file("../../Software/bbmap/")
-    sickle = m.declare_file("../../Software/sickle/")
-    trimmomatic = m.declare_file("../../Software/Trimmomatic-0.39/")
-    references = m.declare_file("../References")
+    fastqc = m.declare_file(os.path.join(software_path, "FastQC/"))   
+    bbmap = m.declare_file(os.path.join(software_path, "bbmap/"))
+    sickle = m.declare_file(os.path.join(software_path, "sickle/"))
+    trimmomatic = m.declare_file(os.path.join(software_path, "Trimmomatic-0.39/"))
+    references = m.declare_file(references_path)
     # phix_adapters = m.declare_file("../References/phix_adapters.fa.gz")
 
     print("Declaring tasks...")
 
-    directory = "../../../Input_data/"
-    for filename in os.listdir(directory):
-        fullpath = os.path.join(directory, filename)
+    for filename in os.listdir(input_data_path):
+        fullpath = os.path.join(input_data_path, filename)
         if os.path.isfile(fullpath) and fullpath.endswith("fastq"):
             
             ############ B
