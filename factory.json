@@ -1,0 +1,11 @@
+{
+    "manager-name": "qcreport_jzhou24",
+    "max-workers": 20,
+    "min-workers": 20,
+    "tasks-per-worker": 1,
+    "workers-per-cycle": 20,
+    "cores": 10,
+    "memory": 131072,
+    "disk": 524288,
+    "timeout": 36000
+}

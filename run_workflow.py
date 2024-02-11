@@ -27,13 +27,13 @@ if __name__ == "__main__":
         prog="vine_example_bbduk.py",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--B', action="store_true")
-    parser.add_argument('--C', action="store_true")
+    parser.add_argument('--fastqc', action="store_true")
+    parser.add_argument('--clean', action="store_true")
     args = parser.parse_args()
 
 
     m = vine.Manager(port=9123)
-    m.set_name("qcreport")
+    m.set_name("qcreport_jzhou24")
     # m.declare_poncho('env.tar.gz')
     
     print("Declaring files...")
@@ -47,16 +47,15 @@ if __name__ == "__main__":
     sickle = m.declare_file(os.path.join(software_path, "sickle/"))
     trimmomatic = m.declare_file(os.path.join(software_path, "Trimmomatic-0.39/"))
     references = m.declare_file(references_path)
-    # phix_adapters = m.declare_file("../References/phix_adapters.fa.gz")
 
     print("Declaring tasks...")
 
     for filename in os.listdir(input_data_path):
         fullpath = os.path.join(input_data_path, filename)
-        if os.path.isfile(fullpath) and fullpath.endswith("fastq"):
+        if os.path.isfile(fullpath) and fullpath.endswith("fastq.gz"):
             
-            ############ B
-            if args.B:
+            ############ fastqc
+            if args.fastqc:
                 input_filename = os.path.basename(fullpath)
                 input_data = m.declare_file(fullpath)
                 
@@ -70,6 +69,8 @@ if __name__ == "__main__":
 
                         input_data: {"remote_name": input_filename},
                     },
+
+                    cores = 10
                 )
                 output_filename = input_filename.replace('.fastq', '_fastqc.zip')
                 output_data = m.declare_file(output_filename)
@@ -79,8 +80,8 @@ if __name__ == "__main__":
                 print(f"submitted task {t.id}: {t.command}")
 
             
-            ############ C
-            if args.C:
+            ############ clean
+            if args.clean:
                 input_filename = os.path.basename(fullpath)
                 input_data = m.declare_file(fullpath)
                 input_filename = os.path.basename(fullpath)
@@ -98,7 +99,15 @@ if __name__ == "__main__":
                     bbwrap_output_filename = bbduk_output_filename.split("fq")[0] + "hostclean.fq"
 
                     final_output_filename = bbduk_output_filename.split("_1.trim")[0] + "_1.final.clean.fq"
-                    final_outputm_filename = bbduk_output_filename.split("_1.trim")[0] + "_1.reads_that_match_rRNA.fq"
+                    
+                    print(f"\n===the inputs are")
+                    print(f"{input_filename}")
+                    print(f"===the outputs are")
+                    print(f"{trim_output_filename}")
+                    print(f"{sickle_output_filename}")
+                    print(f"{bbduk_output_filename}")
+                    print(f"{bbwrap_output_filename}")
+                    print(f"{final_output_filename}")
 
                     t = vine.Task(
                         inputs = {
@@ -106,11 +115,10 @@ if __name__ == "__main__":
                             sickle: {"remote_name": "sickle"},
                             bbmap: {"remote_name": "bbmap"},
                             references: {"remote_name": "references"},
-                            # phix_adapters: {"remote_name": "phix_adapters.fa.gz"},
 
                             input_data: {"remote_name": input_filename},
                         },
-
+                        command1 = f"echo {final_output_filename} > {final_output_filename}",
                         command = f"""
                             java -jar ./trimmomatic/trimmomatic-0.39.jar SE {input_filename} \
                             -threads 16 \
@@ -125,7 +133,7 @@ if __name__ == "__main__":
                             -o {sickle_output_filename} \
                             -t sanger \
                             -q 20 \
-                            -l 60
+                            -l 60 &> /dev/null
                             
                             ./bbmap/bbduk.sh \
                             threads=8 \
@@ -133,7 +141,7 @@ if __name__ == "__main__":
                             k=31 \
                             ref=./references/phix_adapters.fa.gz \
                             out1={bbduk_output_filename} \
-                            minlength=60
+                            minlength=60 &> /dev/null
 
                             ./bbmap/bbwrap.sh \
                             threads=16 \
@@ -149,36 +157,33 @@ if __name__ == "__main__":
                             minlength=60 \
                             in={bbduk_output_filename} \
                             outu1={bbwrap_output_filename} \
-                            path=./references/human
+                            path=./references/human &> /dev/null
 
                             ./bbmap/bbduk.sh \
                             in={bbwrap_output_filename} \
                             ref=./references/smr_v4.3_default_db.fasta \
-                            out={final_output_filename} \
-                            outm={final_outputm_filename}
+                            out={final_output_filename} &> /dev/null
 
                         """,
                     )
                     
 
                 trim_output = m.declare_file(trim_output_filename)
-                trim_log = m.declare_file(trim_log_filename)
+                # trim_log = m.declare_file(trim_log_filename)
                 sickle_output = m.declare_file(sickle_output_filename)
                 bbduk_output = m.declare_file(bbduk_output_filename)
                 bbwrap_output = m.declare_file(bbwrap_output_filename)
                 final_output = m.declare_file(final_output_filename)
-                final_outputm = m.declare_file(final_outputm_filename)
 
                 t.add_output(trim_output, trim_output_filename, watch=True)
-                t.add_output(trim_log, trim_log_filename, watch=True)
+                # t.add_output(trim_log, trim_log_filename, watch=True)
                 t.add_output(sickle_output, sickle_output_filename, watch=True)
                 t.add_output(bbduk_output, bbduk_output_filename, watch=True)
                 t.add_output(bbwrap_output, bbwrap_output_filename, watch=True)
                 t.add_output(final_output, final_output_filename, watch=True)
-                t.add_output(final_outputm, final_outputm_filename, watch=True)
 
                 task_id = m.submit(t)
-                print(f"submitted task {t.id}: {t.command}")
+                print(f"submitted task {t.id}")
 
             ############
             
